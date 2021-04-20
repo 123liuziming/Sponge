@@ -19,8 +19,8 @@ void get_URL(const string &host, const string &path) {
     TCPSocket tcpSocket = TCPSocket();
     tcpSocket.connect(Address(host, "http"));
     tcpSocket.write("GET " + path + " HTTP/1.1\r\n");
-    tcpSocket.write("HOST " + host + " \r\n");
-    tcpSocket.write("Connection:close \r\n");
+    tcpSocket.write("HOST: " + host + "\r\n");
+    tcpSocket.write("Connection: close\r\n");
     tcpSocket.write("\r\n");
     while (!tcpSocket.eof()) {
         std::string result = tcpSocket.read();
