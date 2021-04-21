@@ -24,7 +24,7 @@ void get_URL(const string &host, const string &path) {
     tcpSocket.write("\r\n");
     while (!tcpSocket.eof()) {
         std::string result = tcpSocket.read();
-        cout << result;
+        std::cout << result;
     }
     tcpSocket.close();
 }
