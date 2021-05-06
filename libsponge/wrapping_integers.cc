@@ -1,4 +1,5 @@
 #include "wrapping_integers.hh"
+#include <iostream>
 
 // Dummy implementation of a 32-bit wrapping integer
 
@@ -10,12 +11,15 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
+inline uint32_t abs_diff(uint64_t a, uint64_t b) {
+    return (a > b ? a - b : b - a);
+}
+
 //! Transform an "absolute" 64-bit sequence number (zero-indexed) into a WrappingInt32
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+    return isn + n;
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -29,6 +33,10 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+    WrappingInt32 checkPointWrapped = wrap(checkpoint, isn);
+    auto diff = n - checkPointWrapped;
+    if (diff < 0 && (checkpoint < INT32_MAX && diff + checkpoint <= UINT64_MAX)) {
+        return diff + static_cast<uint32_t>(checkpoint);
+    }
+    return diff + checkpoint;
 }
