@@ -93,3 +93,8 @@ size_t StreamReassembler::unassembled_bytes() const {
 bool StreamReassembler::empty() const {
     return stream_out().buffer_empty();
 }
+
+size_t StreamReassembler::getIndexNow() const {
+    return _indexNow;
+}
+
