@@ -11,10 +11,6 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-inline uint32_t abs_diff(uint64_t a, uint64_t b) {
-    return (a > b ? a - b : b - a);
-}
-
 //! Transform an "absolute" 64-bit sequence number (zero-indexed) into a WrappingInt32
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
