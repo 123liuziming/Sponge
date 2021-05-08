@@ -94,7 +94,8 @@ bool StreamReassembler::empty() const {
     return stream_out().buffer_empty();
 }
 
+//给tcp receiver使用
 size_t StreamReassembler::getIndexNow() const {
-    return _indexNow;
+    return _output.remaining_capacity() == 0 ? _indexNow + 1 : _indexNow;
 }
 
