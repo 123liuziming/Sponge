@@ -17,6 +17,32 @@
 //! segments if the retransmission timer expires.
 class TCPSender {
   private:
+    //需要重发的报文段队列
+    std::queue<TCPSegment> _outstandings{};
+
+    //总共有多少byte没有被确认，注意，这里的数量是在sequence space中的数量
+    size_t _bytesInFlight{0};
+
+    //窗口值
+    size_t _windowSize;
+
+    //窗口右边界
+    uint64_t _windowRightEdge;
+
+    //是否启动了计时器
+    bool _timer_flag{false};
+
+    //重传超时时间
+    size_t _RTO;
+
+    //系统剩余时间
+    size_t _remainTicks;
+
+    //上一次确认的segment
+    uint64_t _lastAck;
+
+    unsigned int _consecutiveRetransmissions{0};
+
     //! our initial sequence number, the number for our SYN.
     WrappingInt32 _isn;
 
