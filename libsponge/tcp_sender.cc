@@ -2,6 +2,7 @@
 
 #include "tcp_config.hh"
 
+#include <iostream>
 #include <random>
 
 // Dummy implementation of a TCP sender
@@ -10,7 +11,7 @@
 // automated checks run by `make check_lab3`.
 
 template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
+void DUMMY_CODE(Targs &&.../* unused */) {}
 
 using namespace std;
 
@@ -22,44 +23,43 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     , _initial_retransmission_timeout{retx_timeout}
     , _stream(capacity) {}
 
-uint64_t TCPSender::bytes_in_flight() const {
-    return _bytesInFlight;
-}
+uint64_t TCPSender::bytes_in_flight() const { return _bytesInFlight; }
 
 void TCPSender::fill_window() {
     TCPSegment segment;
-    //构造header
-    std::string datagram;
     TCPHeader header;
-    header.seqno = wrap(_next_seqno, _isn);
+    header.seqno = next_seqno();
+    //取窗口和可取数据的最小值
+    auto realSize = _stream.remaining_capacity() > TCPConfig::MAX_PAYLOAD_SIZE ? _stream.remaining_capacity()
+                                                                               : TCPConfig::MAX_PAYLOAD_SIZE;
     //说明发送的是SYN
     if (_next_seqno == 0) {
+        realSize = 0;
         header.syn = true;
         ++_next_seqno;
     }
     //读入body
-    auto realSize = _stream.remaining_capacity() > TCPConfig::MAX_PAYLOAD_SIZE ? _stream.remaining_capacity() : TCPConfig::MAX_PAYLOAD_SIZE;
-    //取窗口和可取数据的最小值
-    realSize = std::min(realSize, _windowRightEdge - _next_seqno);
-    std::string body = _stream.read(realSize);
+    realSize = std::min(std::min(realSize, _windowSize), segment.payload().size());
     _next_seqno += realSize;
-    if (_stream.eof() && _next_seqno < _windowRightEdge) {
+    if (_stream.eof() && _absFin == 0 && _next_seqno < _windowRightEdge) {
         header.fin = true;
+        _absFin = _next_seqno;
         ++_next_seqno;
     }
-    datagram += header.serialize();
-    auto parseResult = segment.parse(string(datagram.begin(), datagram.end()), 0);
-    if (parseResult == ParseResult::NoError) {
-        _bytesInFlight += segment.length_in_sequence_space();
-        //发送报文，将报文添加到重传队列中暂时保存
-        _segments_out.push(segment);
-        _outstandings.push(segment);
-
-        //如果没有启动计时器，则启动计时器，并重置剩余时间
-        if (!_timer_flag) {
-            _timer_flag = true;
-            _remainTicks = _RTO;
-        }
+    segment.header() = header;
+    segment.payload() = Buffer(_stream.read(realSize));
+    _bytesInFlight += segment.length_in_sequence_space();
+    //笨逼报文不配发
+    if (segment.length_in_sequence_space() == 0) {
+        return;
+    }
+    //发送报文，将报文添加到重传队列中暂时保存
+    _segments_out.push(segment);
+    _outstandings.push(segment);
+    //如果没有启动计时器，则启动计时器，并重置剩余时间
+    if (!_timer_flag) {
+        _timer_flag = true;
+        _remainTicks = _RTO;
     }
 }
 
@@ -70,34 +70,31 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     _windowSize = window_size;
     auto ackNoUnWrapped = unwrap(ackno, _isn, _next_seqno);
     auto ackLength = ackNoUnWrapped - _lastAck;
-    _windowRightEdge = _next_seqno + ackNoUnWrapped;
+    _windowRightEdge = window_size + ackNoUnWrapped;
     //确认了太久之前的报文，应该丢弃
-    if (_lastAck > ackNoUnWrapped) {
+    //或者是
+    if (_lastAck >= ackNoUnWrapped) {
         return;
     }
     //已经重传完所有数据，关闭定时器
-    _bytesInFlight -=ackLength;
+    _bytesInFlight -= ackLength;
     if (_bytesInFlight) {
         _timer_flag = false;
     }
     //重传所有的超时报文
-    while (!_outstandings.empty() && _bytesInFlight) {
+    while (!_outstandings.empty()) {
         auto &front = _outstandings.front();
         //如果这个报文段被此ack完全覆盖，则说明接收方已经完全收到，不需要再重传
         if (unwrap(front.header().seqno, _isn, _next_seqno) + front.length_in_sequence_space() <= ackNoUnWrapped) {
             _outstandings.pop();
-        }
-        else {
+        } else {
             break;
         }
     }
     //设置ack
     _lastAck = ackNoUnWrapped;
     _RTO = _initial_retransmission_timeout;
-    //还有未重传的报文的话，将剩余时间重置
-    if (!_outstandings.empty()) {
-        _remainTicks = _RTO;
-    }
+    _remainTicks = _RTO;
     //连续重传报文数重置
     _consecutiveRetransmissions = 0;
 }
@@ -110,7 +107,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     }
     _remainTicks -= ms_since_last_tick;
     //如果已经到了时间
-    if (_remainTicks <= 0) {
+    if (_remainTicks <= 0 && !_outstandings.empty()) {
         //重新传输报文段
         _segments_out.push(_outstandings.front());
         if (_windowSize > 0) {
@@ -123,9 +120,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     }
 }
 
-unsigned int TCPSender::consecutive_retransmissions() const {
-    return _consecutiveRetransmissions;
-}
+unsigned int TCPSender::consecutive_retransmissions() const { return _consecutiveRetransmissions; }
 
 void TCPSender::send_empty_segment() {
     //这些报文段不会被重传，也不占用序号

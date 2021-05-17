@@ -24,22 +24,25 @@ class TCPSender {
     size_t _bytesInFlight{0};
 
     //窗口值
-    size_t _windowSize;
+    size_t _windowSize{0x3f3f3f3f};
 
     //窗口右边界
-    uint64_t _windowRightEdge;
+    uint64_t _windowRightEdge{0};
 
     //是否启动了计时器
     bool _timer_flag{false};
 
     //重传超时时间
-    size_t _RTO;
+    size_t _RTO{0};
 
     //系统剩余时间
-    size_t _remainTicks;
+    size_t _remainTicks{0};
 
     //上一次确认的segment
-    uint64_t _lastAck;
+    uint64_t _lastAck{0};
+
+    //是否已经fin了
+    uint64_t _absFin{0};
 
     unsigned int _consecutiveRetransmissions{0};
 
