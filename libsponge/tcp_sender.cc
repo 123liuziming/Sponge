@@ -21,45 +21,49 @@ using namespace std;
 TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const std::optional<WrappingInt32> fixed_isn)
     : _isn(fixed_isn.value_or(WrappingInt32{random_device()()}))
     , _initial_retransmission_timeout{retx_timeout}
+    , _RTO{retx_timeout}
     , _stream(capacity) {}
 
 uint64_t TCPSender::bytes_in_flight() const { return _bytesInFlight; }
 
 void TCPSender::fill_window() {
-    TCPSegment segment;
-    TCPHeader header;
-    header.seqno = next_seqno();
-    //取窗口和可取数据的最小值
-    auto realSize = _stream.remaining_capacity() > TCPConfig::MAX_PAYLOAD_SIZE ? _stream.remaining_capacity()
-                                                                               : TCPConfig::MAX_PAYLOAD_SIZE;
-    //说明发送的是SYN
-    if (_next_seqno == 0) {
-        realSize = 0;
-        header.syn = true;
-        ++_next_seqno;
-    }
-    //读入body
-    realSize = std::min(std::min(realSize, _windowSize), segment.payload().size());
-    _next_seqno += realSize;
-    if (_stream.eof() && _absFin == 0 && _next_seqno < _windowRightEdge) {
-        header.fin = true;
-        _absFin = _next_seqno;
-        ++_next_seqno;
-    }
-    segment.header() = header;
-    segment.payload() = Buffer(_stream.read(realSize));
-    _bytesInFlight += segment.length_in_sequence_space();
-    //笨逼报文不配发
-    if (segment.length_in_sequence_space() == 0) {
-        return;
-    }
-    //发送报文，将报文添加到重传队列中暂时保存
-    _segments_out.push(segment);
-    _outstandings.push(segment);
-    //如果没有启动计时器，则启动计时器，并重置剩余时间
-    if (!_timer_flag) {
-        _timer_flag = true;
-        _remainTicks = _RTO;
+    while (_next_seqno < (_windowSize == 0 && _windowRightEdge == _next_seqno ? _windowRightEdge + 1 : _windowRightEdge)) {
+        TCPSegment segment;
+        TCPHeader header;
+        header.seqno = next_seqno();
+        //取窗口和可取数据的最小值
+        auto realSize = TCPConfig::MAX_PAYLOAD_SIZE;
+        //说明发送的是SYN
+        if (_next_seqno == 0) {
+            realSize = 0;
+            header.syn = true;
+            ++_next_seqno;
+        }
+        //读入body
+        auto realEdge = _windowRightEdge + (_windowSize == 0 && _windowRightEdge == _next_seqno);
+        realSize = std::min(realSize, realEdge - _next_seqno);
+        segment.payload() = Buffer(_stream.read(realSize));
+        realSize = std::min(realSize, segment.payload().size());
+        _next_seqno += realSize;
+        if (_stream.eof() && _absFin == 0 && _next_seqno < realEdge) {
+            header.fin = true;
+            _absFin = _next_seqno;
+            ++_next_seqno;
+        }
+        segment.header() = header;
+        _bytesInFlight += segment.length_in_sequence_space();
+        //笨逼报文不配发
+        if (segment.length_in_sequence_space() == 0) {
+            return;
+        }
+        //发送报文，将报文添加到重传队列中暂时保存
+        _segments_out.push(segment);
+        _outstandings.push(segment);
+        //如果没有启动计时器，则启动计时器，并重置剩余时间
+        if (!_timer_flag) {
+            _timer_flag = true;
+            _remainTicks = _RTO;
+        }
     }
 }
 
@@ -72,13 +76,12 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     auto ackLength = ackNoUnWrapped - _lastAck;
     _windowRightEdge = window_size + ackNoUnWrapped;
     //确认了太久之前的报文，应该丢弃
-    //或者是
-    if (_lastAck >= ackNoUnWrapped) {
+    if (_lastAck >= ackNoUnWrapped || ackNoUnWrapped > _next_seqno) {
         return;
     }
     //已经重传完所有数据，关闭定时器
     _bytesInFlight -= ackLength;
-    if (_bytesInFlight) {
+    if (!_bytesInFlight) {
         _timer_flag = false;
     }
     //重传所有的超时报文
@@ -110,7 +113,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     if (_remainTicks <= 0 && !_outstandings.empty()) {
         //重新传输报文段
         _segments_out.push(_outstandings.front());
-        if (_windowSize > 0) {
+        if (_windowSize > 0 || _windowRightEdge == 0) {
             //递增连续重新传输
             ++_consecutiveRetransmissions;
             //将RTO翻倍

@@ -24,7 +24,7 @@ class TCPSender {
     size_t _bytesInFlight{0};
 
     //窗口值
-    size_t _windowSize{0x3f3f3f3f};
+    size_t _windowSize{0};
 
     //窗口右边界
     uint64_t _windowRightEdge{0};
@@ -32,11 +32,8 @@ class TCPSender {
     //是否启动了计时器
     bool _timer_flag{false};
 
-    //重传超时时间
-    size_t _RTO{0};
-
     //系统剩余时间
-    size_t _remainTicks{0};
+    int _remainTicks{0};
 
     //上一次确认的segment
     uint64_t _lastAck{0};
@@ -54,6 +51,9 @@ class TCPSender {
 
     //! retransmission timer for the connection
     unsigned int _initial_retransmission_timeout;
+
+    //重传超时时间
+    size_t _RTO{0};
 
     //! outgoing stream of bytes that have not yet been sent
     ByteStream _stream;
