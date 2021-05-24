@@ -11,6 +11,7 @@ template <typename... Targs>
 void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
+#include <iostream>
 
 StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), _capacity(capacity), _unorderedItem(), _unorderedBytes(0) {}
 
@@ -82,6 +83,11 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         }
         ++_indexNow;
     }
+    while (fix.length() >= _output.remaining_capacity() && _unorderedItem.count(_indexNow + 1)) {
+        ++_indexNow;
+        _unorderedItem.erase(_indexNow);
+    }
+    cout << "_indexNow: " << _indexNow << endl;
     _output.write(fix);
 }
 
@@ -96,6 +102,6 @@ bool StreamReassembler::empty() const {
 
 //给tcp receiver使用
 size_t StreamReassembler::getIndexNow() const {
-    return _output.remaining_capacity() == 0 ? _indexNow + 1 : _indexNow;
+    return _indexNow;
 }
 

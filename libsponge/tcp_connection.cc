@@ -35,15 +35,24 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
         endConnection();
         return;
     }
-    //接收方接收segment
-    _receiver.segment_received(seg);
     //如果ACK置位，告知发送方ackno和窗口大小
     if (seg.header().ack) {
         _sender.ack_received(seg.header().ackno, seg.header().win);
     }
-    //发送ACK
-    if (_receiver.ackno().has_value()) {
-        sendReply();
+    if (!_receiver.ackno().has_value() || (_receiver.ackno().has_value() && seg.header().seqno - _receiver.isn().value() > 0 && seg.header().seqno - _receiver.isn().value() <= static_cast<int32_t>(_receiver.capacity()))) {
+        //接收方接收segment
+        _receiver.segment_received(seg);
+    }
+    if (_receiver.stream_out().eof() && !_sender.stream_in().eof()) {
+        _linger_after_streams_finish = false;
+    }
+
+    //如果收到的不是单纯的ack，则必须要回复
+    if (seg.length_in_sequence_space()) {
+        if (_sender.next_seqno_absolute()) {
+            _sender.send_empty_segment();
+        }
+        sendWrapped();
     }
 }
 
@@ -56,9 +65,8 @@ void TCPConnection::sendReply() {
     if (!active()) {
         return;
     }
-    auto segments = _sender.segments_out();
-    while (!segments.empty()) {
-        TCPSegment seg = segments.front();
+    while (!_sender.segments_out().empty()) {
+        TCPSegment seg = _sender.segments_out().front();
         if (_receiver.ackno().has_value()) {
             seg.header().ack = true;
             seg.header().ackno = _receiver.ackno().value();
@@ -83,7 +91,7 @@ bool TCPConnection::active() const {
         return false;
     }
     if (_receiver.stream_out().eof() && _sender.stream_in().eof() && !needSendAck() && _sender.bytes_in_flight() == 0) {
-        return _timeSinceLastSegmentReceived < 10 * _cfg.rt_timeout;
+        return _linger_after_streams_finish && _timeSinceLastSegmentReceived < 10 * _cfg.rt_timeout;
     }
     return true;
 }
@@ -102,6 +110,9 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
     if (_sender.consecutive_retransmissions() > TCPConfig::MAX_RETX_ATTEMPTS) {
         sendRST();
         endConnection();
+    }
+    if (_timeSinceLastSegmentReceived >= 10 * _cfg.rt_timeout && !active()) {
+        _linger_after_streams_finish = false;
     }
     if (!_sender.next_seqno_absolute()) {
         return;
@@ -127,9 +138,6 @@ bool TCPConnection::needSendAck() const {
 
 void TCPConnection::sendWrapped() {
     _sender.fill_window();
-    if (!needSendAck()) {
-        return;
-    }
     //可能需要发送空的ack
     if (_sender.segments_out().empty() && needSendAck()) {
         _sender.send_empty_segment();

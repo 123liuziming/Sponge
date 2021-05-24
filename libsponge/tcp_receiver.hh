@@ -68,6 +68,8 @@ class TCPReceiver {
     ByteStream &stream_out() { return _reassembler.stream_out(); }
     const ByteStream &stream_out() const { return _reassembler.stream_out(); }
     //!@}
+    std::optional<WrappingInt32> isn();
+    size_t capacity();
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_RECEIVER_HH

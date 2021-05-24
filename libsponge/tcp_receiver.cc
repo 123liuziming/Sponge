@@ -51,3 +51,11 @@ optional<WrappingInt32> TCPReceiver::ackno() const {
 size_t TCPReceiver::window_size() const {
     return _reassembler.stream_out().remaining_capacity();
 }
+
+std::optional<WrappingInt32> TCPReceiver::isn() {
+    return _isn;
+}
+
+size_t TCPReceiver::capacity() {
+    return _capacity;
+}
