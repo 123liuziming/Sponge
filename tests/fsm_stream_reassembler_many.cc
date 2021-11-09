@@ -58,7 +58,7 @@ int main() {
 
         // insert EOF into a hole in the buffer
         for (unsigned rep_no = 0; rep_no < NREPS; ++rep_no) {
-            StreamReassembler buf{65'000};
+            StreamReassembler buf{65000};
 
             const size_t size = 1024;
             string d(size, 0);
@@ -89,7 +89,7 @@ int main() {
 
         // insert EOF over previously queued data, require one of two possible correct actions
         for (unsigned rep_no = 0; rep_no < NREPS; ++rep_no) {
-            StreamReassembler buf{65'000};
+            StreamReassembler buf{65000};
 
             const size_t size = 1024;
             string d(size, 0);

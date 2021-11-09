@@ -44,13 +44,11 @@ class NetworkInterface {
 
     std::unordered_map<uint32_t , std::pair<EthernetAddress, size_t>> _cache{};
 
-    //std::queue<std::pair<uint32_t, EthernetFrame>> _framesToBeSent{};
+    std::unordered_map<uint32_t, std::pair<EthernetFrame, uint32_t>> _eth_set{};
 
-    std::unordered_map<uint32_t, std::pair<EthernetFrame, uint32_t>> _ethSet{};
+    size_t _tick_send{0};
 
-    size_t _tickSend{0};
-
-    size_t _tickExpire{0};
+    size_t _tick_expire{0};
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses

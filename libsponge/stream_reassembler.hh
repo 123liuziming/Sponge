@@ -18,11 +18,11 @@ class StreamReassembler {
     size_t _capacity;    //!< The maximum number of bytes
 
     //现在的index
-    size_t _indexNow = 0;
+    size_t _index_now;
     //无序的数据
-    std::map<int, std::pair<char, bool>> _unorderedItem;
+    std::map<int, std::pair<char, bool>> _unordered_item;
     //无序数据字节数
-    size_t _unorderedBytes;
+    size_t _unordered_bytes;
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
@@ -55,7 +55,7 @@ class StreamReassembler {
     //! \brief Is the internal state empty (other than the output stream)?
     //! \returns `true` if no substrings are waiting to be assembled
     bool empty() const;
-    size_t getIndexNow() const;
+    size_t get_index_now() const;
 };
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH

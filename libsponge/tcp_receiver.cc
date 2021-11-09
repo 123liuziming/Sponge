@@ -26,9 +26,15 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
         _isn = seg.header().seqno;
     }
 
+    auto index = unwrap(WrappingInt32(seg.header().seqno - _offset), _isn.value(), _reassembler.stream_out().bytes_written());
+
+    if (index >= _reassembler.get_index_now() + window_size()) {
+        return;
+    }
+
     if (ackno().has_value() && !_reassembler.stream_out().input_ended()) {
         auto payload = seg.payload().copy();
-        _reassembler.push_substring(payload, unwrap(WrappingInt32(seg.header().seqno - _offset), _isn.value(), _reassembler.stream_out().bytes_written()), seg.header().fin);
+        _reassembler.push_substring(payload, index, seg.header().fin);
     }
 
     if (seg.header().syn) {
@@ -43,7 +49,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
 
 optional<WrappingInt32> TCPReceiver::ackno() const {
     if (_isn.has_value()) {
-        return wrap(_reassembler.getIndexNow() + _offset, _isn.value());
+        return wrap(_reassembler.get_index_now() + _offset, _isn.value());
     }
     return {};
 }

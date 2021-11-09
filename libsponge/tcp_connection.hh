@@ -20,8 +20,8 @@ class TCPConnection {
     //! for 10 * _cfg.rt_timeout milliseconds after both streams have ended,
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
-    size_t _timeSinceLastSegmentReceived{0};
-    std::optional<WrappingInt32> _lastAckNoSent{};
+    size_t _time_since_last_segment_received{0};
+    std::optional<WrappingInt32> _last_ack_no_sent{};
 
   public:
     //! \name "Input" interface for the writer
@@ -96,11 +96,11 @@ class TCPConnection {
     TCPConnection(const TCPConnection &other) = delete;
     TCPConnection &operator=(const TCPConnection &other) = delete;
     //!@}
-    void endConnection();
-    void sendReply();
-    void sendRST();
-    bool needSendAck() const;
-    void sendWrapped();
+    void end_connection();
+    void send_reply();
+    void send_rst();
+    bool need_send_ack() const;
+    void send_wrapped();
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_FACTORED_HH

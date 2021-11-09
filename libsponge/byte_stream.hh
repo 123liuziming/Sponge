@@ -13,9 +13,9 @@ class ByteStream {
     // Your code here -- add private members as necessary.
     std::string _cache = "";
     size_t _capacity = 0;
-    bool _inputEnded = false;
-    int _totalWriteNum = 0;
-    int _totalReadNum = 0;
+    bool _input_ended = false;
+    int _total_write_num = 0;
+    int _total_read_num = 0;
     // Hint: This doesn't need to be a sophisticated data structure at
     // all, but if any of your tests are taking longer than a second,
     // that's a sign that you probably want to keep exploring

@@ -34,11 +34,12 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
     auto diff = n - isn;
     const uint64_t mask = 1ul << 32;
-    uint64_t modLeft = checkpoint / mask * mask;
-    uint64_t modRight = (checkpoint / mask + 1) * mask;
-    auto ptLeft = modLeft >= INT32_MAX || modLeft + diff > INT64_MAX ? modLeft + diff : modLeft + static_cast<uint32_t>(diff);
-    auto ptRight = modRight >= INT32_MAX || modRight + diff >= INT64_MAX ? modRight + diff : modRight + static_cast<uint32_t>(diff);
-    const uint64_t disLeft = abs_diff(checkpoint, ptLeft);
-    const uint64_t disRight = abs_diff(checkpoint, ptRight);
-    return disLeft <= disRight ? ptLeft : ptRight;
+    uint64_t mod_left = checkpoint / mask * mask;
+    uint64_t mod_right = (checkpoint / mask + 1) * mask;
+    auto pt_left =
+        mod_left >= INT32_MAX || mod_left + diff > INT64_MAX ? mod_left + diff : mod_left + static_cast<uint32_t>(diff);
+    auto pt_right = mod_right >= INT32_MAX || mod_right + diff >= INT64_MAX ? mod_right + diff : mod_right + static_cast<uint32_t>(diff);
+    const uint64_t dis_left = abs_diff(checkpoint, pt_left);
+    const uint64_t dis_right = abs_diff(checkpoint, pt_right);
+    return dis_left <= dis_right ? pt_left : pt_right;
 }

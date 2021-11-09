@@ -50,14 +50,14 @@ class Router {
     void route_one_datagram(InternetDatagram &dgram);
 
     struct RouteItem {
-        uint32_t routePrefix = 0;
-        uint8_t prefixLength = 0;
-        std::optional<Address> nextHop = std::nullopt;
-        size_t interfaceNum = 0;
+        uint32_t route_prefix = 0;
+        uint8_t prefix_length = 0;
+        std::optional<Address> next_hop = std::nullopt;
+        size_t interface_num = 0;
     };
-    std::vector<RouteItem> _routeList{};
+    std::vector<RouteItem> _route_list{};
 
-    bool prefixEqual(uint32_t ip1, uint32_t ip2, uint8_t len);
+    bool prefix_equal(uint32_t ip1, uint32_t ip2, uint8_t len);
 
   public:
     //! Add an interface to the router

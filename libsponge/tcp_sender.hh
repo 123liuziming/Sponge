@@ -21,27 +21,27 @@ class TCPSender {
     std::queue<TCPSegment> _outstandings{};
 
     //总共有多少byte没有被确认，注意，这里的数量是在sequence space中的数量
-    size_t _bytesInFlight{0};
+    size_t _bytes_in_flight{0};
 
     //窗口值
-    size_t _windowSize{0};
+    size_t _window_size{0};
 
     //窗口右边界
-    uint64_t _windowRightEdge{0};
+    uint64_t _window_right_edge{0};
 
     //是否启动了计时器
     bool _timer_flag{false};
 
     //系统剩余时间
-    int _remainTicks{0};
+    int _remain_ticks{0};
 
     //上一次确认的segment
-    uint64_t _lastAck{0};
+    uint64_t _last_ack{0};
 
     //是否已经fin了
-    uint64_t _absFin{0};
+    uint64_t _abs_fin{0};
 
-    unsigned int _consecutiveRetransmissions{0};
+    unsigned int _consecutive_retransmissions{0};
 
     //! our initial sequence number, the number for our SYN.
     WrappingInt32 _isn;
